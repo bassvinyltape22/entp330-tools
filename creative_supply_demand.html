@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supply & Demand for Creatives - ENTP 330</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2c1810;
+            --secondary: #d4af37;
+            --accent: #8b4513;
+            --success: #228b22;
+            --warning: #ff6347;
+            --neutral: #f5f5dc;
+            --dark: #1a0d08;
+            --light: #faf8f3;
+            --supply-color: #ff8c00;
+            --demand-color: #0066cc;
+            --equilibrium: #7209b7;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Crimson Pro', serif;
+            background: linear-gradient(145deg, var(--light) 0%, var(--neutral) 100%);
+            color: var(--primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--dark) 0%, var(--primary) 50%, var(--accent) 100%);
+            color: var(--light);
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d4af37' fill-opacity='0.05'%3E%3Cpath d='M20 20.5V18H0v-2h20v-2H0v-2h20v-2H0V8h20V6H0V4h20V2H0V0h22v20h2V0h2v20h2V0h2v20h2V0h2v20h2V0h2v20h2v2H20v-1.5zM0 20h2v20H0V20z'/%3E%3C/g%3E%3C/svg%3E") repeat;
+            opacity: 0.1;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 2;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .scenario-selector {
+            grid-column: 1 / -1;
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(44, 24, 16, 0.1);
+            margin-bottom: 1rem;
+        }
+
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .scenario-card {
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, var(--light) 0%, white 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scenario-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--supply-color), var(--demand-color));
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .scenario-card:hover {
+            border-color: var(--secondary);
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(44, 24, 16, 0.15);
+        }
+
+        .scenario-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .scenario-card.active {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(44, 24, 16, 0.05) 100%);
+        }
+
+        .scenario-card.active::before {
+            transform: scaleX(1);
+        }
+
+        .scenario-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .scenario-emoji {
+            font-size: 1.5rem;
+        }
+
+        .scenario-description {
+            color: var(--accent);
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+
+        .scenario-factors {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .factor-group h4 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .supply-factors {
+            border-left: 3px solid var(--supply-color);
+            padding-left: 0.75rem;
+        }
+
+        .demand-factors {
+            border-left: 3px solid var(--demand-color);
+            padding-left: 0.75rem;
+        }
+
+        .factor-group ul {
+            list-style: none;
+            font-size: 0.85rem;
+        }
+
+        .factor-group li {
+            padding: 0.25rem 0;
+            color: var(--accent);
+        }
+
+        .factor-group li::before {
+            content: "→ ";
+            color: var(--secondary);
+            font-weight: 600;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(44, 24, 16, 0.1);
+        }
+
+        .chart-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .controls-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(44, 24, 16, 0.1);
+        }
+
+        .control-group {
+            margin-bottom: 2rem;
+        }
+
+        .control-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .slider-container {
+            margin-bottom: 1rem;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--accent);
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            outline: none;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+            background: linear-gradient(90deg, var(--neutral) 0%, var(--secondary) 100%);
+        }
+
+        .slider:hover {
+            opacity: 1;
+        }
+
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(44, 24, 16, 0.3);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(44, 24, 16, 0.3);
+        }
+
+        .equilibrium-info {
+            background: linear-gradient(135deg, rgba(114, 9, 183, 0.05) 0%, rgba(212, 175, 55, 0.05) 100%);
+            border: 1px solid rgba(114, 9, 183, 0.2);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .equilibrium-info h3 {
+            color: var(--equilibrium);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .equilibrium-values {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .equilibrium-value {
+            text-align: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid rgba(114, 9, 183, 0.1);
+        }
+
+        .equilibrium-value .label {
+            font-size: 0.85rem;
+            color: var(--accent);
+            margin-bottom: 0.25rem;
+        }
+
+        .equilibrium-value .value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--equilibrium);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .reset-btn {
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--accent) 100%);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .reset-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.3);
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 2px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .scenario-factors {
+                grid-template-columns: 1fr;
+            }
+            
+            .equilibrium-values {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Supply & Demand for Creatives</h1>
+        <p>Understanding market forces through art, design, and creative industries</p>
+    </div>
+
+    <div class="container">
+        <div class="scenario-selector">
+            <h2 style="color: var(--primary); margin-bottom: 1rem; font-size: 1.5rem;">Choose Your Creative Market Scenario</h2>
+            <div class="scenario-grid" id="scenarioGrid"></div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title" id="chartTitle">Select a scenario to begin</div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--supply-color);"></div>
+                    <span style="color: var(--supply-color);">Supply Curve</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--demand-color);"></div>
+                    <span style="color: var(--demand-color);">Demand Curve</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--equilibrium);"></div>
+                    <span style="color: var(--equilibrium);">Equilibrium Point</span>
+                </div>
+            </div>
+            <div style="background: rgba(212, 175, 55, 0.05); border-left: 4px solid var(--secondary); padding: 1rem; margin: 1rem 0; border-radius: 0 8px 8px 0; font-size: 0.9rem; line-height: 1.5;">
+                <strong>📊 Reading the Chart:</strong> The <span style="color: var(--supply-color); font-weight: 600;">orange supply curve</span> slopes upward (higher prices encourage more production), while the <span style="color: var(--demand-color); font-weight: 600;">blue demand curve</span> slopes downward (higher prices discourage purchases). Where they intersect is the <span style="color: var(--equilibrium); font-weight: 600;">purple equilibrium point</span> - the market price where supply equals demand. Use the sliders below to see how external factors shift these curves and change the market outcome!
+            </div>
+            <div style="position: relative; height: 400px;">
+                <canvas id="supplyDemandChart"></canvas>
+            </div>
+            <div class="equilibrium-info">
+                <h3>🎯 Market Equilibrium</h3>
+                <div class="equilibrium-values">
+                    <div class="equilibrium-value">
+                        <div class="label">Market Price</div>
+                        <div class="value" id="equilibriumPrice">$0</div>
+                    </div>
+                    <div class="equilibrium-value">
+                        <div class="label">Market Quantity</div>
+                        <div class="value" id="equilibriumQuantity">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-panel">
+            <h3 style="color: var(--primary); margin-bottom: 1rem;">Adjust Market Forces</h3>
+            
+            <div style="background: rgba(44, 24, 16, 0.05); border: 1px solid rgba(44, 24, 16, 0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; font-size: 0.9rem; line-height: 1.5;">
+                <strong>💡 How the Sliders Work:</strong><br>
+                The sliders represent <strong>percentage changes</strong> in market conditions. Moving left (-50) means a 50% decrease in costs/interest, while moving right (+50) means a 50% increase. For example:<br><br>
+                <strong style="color: var(--supply-color);">Supply:</strong> +25 = Production costs increased 25% (curve shifts left/up)<br>
+                <strong style="color: var(--demand-color);">Demand:</strong> +30 = Consumer interest increased 30% (curve shifts right/up)
+            </div>
+            <div class="control-group">
+                <div class="control-title" style="color: var(--supply-color);">
+                    📦 Supply Factors
+                </div>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Production Costs & Availability</span>
+                        <span id="supplyValue">0</span>
+                    </div>
+                    <input type="range" min="-50" max="50" value="0" class="slider" id="supplySlider">
+                    <div style="font-size: 0.8rem; color: var(--accent); margin-top: 0.5rem; display: flex; justify-content: space-between;">
+                        <span>Costs ↓ / Easier to make</span>
+                        <span>Costs ↑ / Harder to make</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="control-title" style="color: var(--demand-color);">
+                    🛍️ Demand Factors
+                </div>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Consumer Interest & Desire</span>
+                        <span id="demandValue">0</span>
+                    </div>
+                    <input type="range" min="-50" max="50" value="0" class="slider" id="demandSlider">
+                    <div style="font-size: 0.8rem; color: var(--accent); margin-top: 0.5rem; display: flex; justify-content: space-between;">
+                        <span>Interest ↓ / Less desirable</span>
+                        <span>Interest ↑ / More desirable</span>
+                    </div>
+                </div>
+            </div>
+
+            <button class="reset-btn" onclick="resetSliders()">Reset to Baseline</button>
+        </div>
+    </div>
+
+    <script>
+        const scenarios = [
+            {
+                id: 'sneakers',
+                title: '👟 Limited Edition Sneakers',
+                emoji: '👟',
+                description: 'A popular streetwear brand releases 500 pairs of exclusive sneakers designed in collaboration with a famous artist.',
+                supplyFactors: [
+                    'High production costs',
+                    'Limited manufacturing capacity', 
+                    'Quality control requirements',
+                    'Artist royalty fees'
+                ],
+                demandFactors: [
+                    'Social media hype',
+                    'Celebrity endorsements',
+                    'Collector value',
+                    'Style trends'
+                ],
+                basePrice: 180,
+                baseQuantity: 500,
+                unit: 'pairs',
+                priceUnit: '$'
+            },
+            {
+                id: 'concert',
+                title: '🎵 Concert Tickets',
+                emoji: '🎵',
+                description: 'A beloved indie band announces their first tour in 3 years, playing at a 2,000-capacity venue in your city.',
+                supplyFactors: [
+                    'Venue capacity limits',
+                    'Artist availability',
+                    'Production costs',
+                    'Security requirements'
+                ],
+                demandFactors: [
+                    'Fan loyalty',
+                    'Album popularity',
+                    'FOMO (fear of missing out)',
+                    'Social media buzz'
+                ],
+                basePrice: 85,
+                baseQuantity: 2000,
+                unit: 'tickets',
+                priceUnit: '$'
+            },
+            {
+                id: 'camera',
+                title: '📷 Vintage Film Cameras',
+                emoji: '📷',
+                description: 'Film photography is experiencing a revival among young photographers and art students.',
+                supplyFactors: [
+                    'Limited vintage stock',
+                    'Restoration costs',
+                    'Expertise required',
+                    'Quality variations'
+                ],
+                demandFactors: [
+                    'Aesthetic trends',
+                    'Instagram influence',
+                    'Photography courses',
+                    'Nostalgia factor'
+                ],
+                basePrice: 250,
+                baseQuantity: 150,
+                unit: 'cameras',
+                priceUnit: '$'
+            },
+            {
+                id: 'supplies',
+                title: '🎨 Art Supplies',
+                emoji: '🎨',
+                description: 'Back-to-school season creates high demand for professional art supplies among students.',
+                supplyFactors: [
+                    'Manufacturing capacity',
+                    'Raw material costs',
+                    'Shipping delays',
+                    'Seasonal production'
+                ],
+                demandFactors: [
+                    'School enrollment',
+                    'Student budgets',
+                    'Course requirements',
+                    'Quality preferences'
+                ],
+                basePrice: 45,
+                baseQuantity: 5000,
+                unit: 'sets',
+                priceUnit: '$'
+            },
+            {
+                id: 'freelance',
+                title: '💻 Freelance Logo Design',
+                emoji: '💻',
+                description: 'Small businesses need logo design services, while many design students offer freelance work.',
+                supplyFactors: [
+                    'Designer skill level',
+                    'Time investment',
+                    'Software costs',
+                    'Portfolio quality'
+                ],
+                demandFactors: [
+                    'Startup growth',
+                    'Rebranding needs',
+                    'Budget consciousness',
+                    'Design appreciation'
+                ],
+                basePrice: 300,
+                baseQuantity: 200,
+                unit: 'projects',
+                priceUnit: '$'
+            },
+            {
+                id: 'prints',
+                title: '🖼️ Artist Prints',
+                emoji: '🖼️',
+                description: 'A local artist releases limited edition prints of their popular digital artwork at a gallery opening.',
+                supplyFactors: [
+                    'Printing costs',
+                    'Paper quality',
+                    'Limited editions',
+                    'Artist time'
+                ],
+                demandFactors: [
+                    'Gallery exposure',
+                    'Art collectors',
+                    'Home decorators',
+                    'Social media shares'
+                ],
+                basePrice: 75,
+                baseQuantity: 100,
+                unit: 'prints',
+                priceUnit: '$'
+            },
+            {
+                id: 'beaniebaby',
+                title: '🧸 Beanie Baby Bubble (1990s)',
+                emoji: '🧸',
+                description: 'Ty Inc. creates artificial scarcity with "retired" bears, leading to speculative mania where rare bears sell for thousands.',
+                supplyFactors: [
+                    'Artificial retirement strategy',
+                    'Limited production runs',
+                    'Manufacturing costs',
+                    'Distribution control'
+                ],
+                demandFactors: [
+                    'Speculation/investment mindset',
+                    'Collector psychology',
+                    'Media hype & coverage',
+                    'FOMO from scarcity'
+                ],
+                basePrice: 15,
+                baseQuantity: 300,
+                unit: 'bears',
+                priceUnit: '$'
+            }
+        ];
+
+        let chart = null;
+        let currentScenario = null;
+        let supplyShift = 0;
+        let demandShift = 0;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            renderScenarios();
+            initializeChart();
+            setupSliders();
+        });
+
+        function renderScenarios() {
+            const grid = document.getElementById('scenarioGrid');
+            grid.innerHTML = scenarios.map(scenario => `
+                <div class="scenario-card" onclick="selectScenario('${scenario.id}')">
+                    <div class="scenario-title">
+                        <span class="scenario-emoji">${scenario.emoji}</span>
+                        ${scenario.title}
+                    </div>
+                    <div class="scenario-description">${scenario.description}</div>
+                    <div class="scenario-factors">
+                        <div class="supply-factors factor-group">
+                            <h4>Supply Factors</h4>
+                            <ul>
+                                ${scenario.supplyFactors.map(factor => `<li>${factor}</li>`).join('')}
+                            </ul>
+                        </div>
+                        <div class="demand-factors factor-group">
+                            <h4>Demand Factors</h4>
+                            <ul>
+                                ${scenario.demandFactors.map(factor => `<li>${factor}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectScenario(scenarioId) {
+            // Remove active class from all cards
+            document.querySelectorAll('.scenario-card').forEach(card => {
+                card.classList.remove('active');
+            });
+
+            // Add active class to selected card
+            event.currentTarget.classList.add('active');
+
+            currentScenario = scenarios.find(s => s.id === scenarioId);
+            resetSliders();
+            updateChart();
+            updateChartTitle();
+        }
+
+        function updateChartTitle() {
+            if (currentScenario) {
+                document.getElementById('chartTitle').textContent = 
+                    `${currentScenario.emoji} ${currentScenario.title} Market`;
+            }
+        }
+
+        function initializeChart() {
+            const ctx = document.getElementById('supplyDemandChart').getContext('2d');
+            
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Supply',
+                            data: [],
+                            borderColor: '#ff8c00',
+                            backgroundColor: 'rgba(255, 140, 0, 0.1)',
+                            borderWidth: 3,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Demand',
+                            data: [],
+                            borderColor: '#0066cc', 
+                            backgroundColor: 'rgba(0, 102, 204, 0.1)',
+                            borderWidth: 3,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Equilibrium',
+                            data: [],
+                            borderColor: '#7209b7',
+                            backgroundColor: '#7209b7',
+                            borderWidth: 0,
+                            pointRadius: 8,
+                            pointHoverRadius: 10,
+                            showLine: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'nearest',
+                            intersect: false,
+                            callbacks: {
+                                title: function(context) {
+                                    if (!currentScenario) return '';
+                                    return `Quantity: ${Math.round(context[0].parsed.x)} ${currentScenario.unit}`;
+                                },
+                                label: function(context) {
+                                    if (!currentScenario) return '';
+                                    return `${context.dataset.label}: ${currentScenario.priceUnit}${Math.round(context.parsed.y)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: 'Quantity',
+                                font: {
+                                    family: 'JetBrains Mono',
+                                    size: 14,
+                                    weight: '600'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(44, 24, 16, 0.1)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Price',
+                                font: {
+                                    family: 'JetBrains Mono',
+                                    size: 14,
+                                    weight: '600'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(44, 24, 16, 0.1)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    if (currentScenario) {
+                                        return currentScenario.priceUnit + Math.round(value);
+                                    }
+                                    return value;
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+        }
+
+        function generateSupplyCurve(scenario, shift = 0) {
+            const points = [];
+            const basePrice = scenario.basePrice;
+            const maxQuantity = scenario.baseQuantity * 2;
+            
+            for (let q = 0; q <= maxQuantity; q += maxQuantity / 50) {
+                // Supply curve: higher quantity = higher price (upward sloping)
+                const baseP = (q / maxQuantity) * basePrice * 2 + basePrice * 0.3;
+                const shiftedP = baseP + shift;
+                points.push({x: q, y: Math.max(1, shiftedP)});
+            }
+            return points;
+        }
+
+        function generateDemandCurve(scenario, shift = 0) {
+            const points = [];
+            const basePrice = scenario.basePrice;
+            const maxQuantity = scenario.baseQuantity * 2;
+            
+            for (let q = 0; q <= maxQuantity; q += maxQuantity / 50) {
+                // Demand curve: higher quantity = lower price (downward sloping)
+                const baseP = basePrice * 2.5 - (q / maxQuantity) * basePrice * 2;
+                const shiftedP = baseP + shift;
+                points.push({x: q, y: Math.max(1, shiftedP)});
+            }
+            return points;
+        }
+
+        function findEquilibrium(supplyPoints, demandPoints) {
+            let minDifference = Infinity;
+            let equilibrium = {x: 0, y: 0};
+            
+            for (let i = 0; i < supplyPoints.length; i++) {
+                const supply = supplyPoints[i];
+                const demand = demandPoints[i];
+                const difference = Math.abs(supply.y - demand.y);
+                
+                if (difference < minDifference) {
+                    minDifference = difference;
+                    equilibrium = {
+                        x: supply.x,
+                        y: (supply.y + demand.y) / 2
+                    };
+                }
+            }
+            
+            return equilibrium;
+        }
+
+        function updateChart() {
+            if (!currentScenario || !chart) return;
+            
+            const supplyPoints = generateSupplyCurve(currentScenario, supplyShift);
+            const demandPoints = generateDemandCurve(currentScenario, demandShift);
+            const equilibrium = findEquilibrium(supplyPoints, demandPoints);
+            
+            chart.data.datasets[0].data = supplyPoints;
+            chart.data.datasets[1].data = demandPoints;
+            chart.data.datasets[2].data = [equilibrium];
+            
+            // Update axis labels
+            chart.options.scales.x.title.text = `Quantity (${currentScenario.unit})`;
+            chart.options.scales.y.title.text = `Price (${currentScenario.priceUnit})`;
+            
+            chart.update('none');
+            
+            // Update equilibrium display
+            document.getElementById('equilibriumPrice').textContent = 
+                currentScenario.priceUnit + Math.round(equilibrium.y);
+            document.getElementById('equilibriumQuantity').textContent = 
+                Math.round(equilibrium.x) + ' ' + currentScenario.unit;
+        }
+
+        function setupSliders() {
+            const supplySlider = document.getElementById('supplySlider');
+            const demandSlider = document.getElementById('demandSlider');
+            const supplyValue = document.getElementById('supplyValue');
+            const demandValue = document.getElementById('demandValue');
+
+            supplySlider.addEventListener('input', function() {
+                supplyShift = parseInt(this.value);
+                const displayValue = supplyShift > 0 ? `+${supplyShift}%` : supplyShift === 0 ? '0%' : `${supplyShift}%`;
+                supplyValue.textContent = displayValue;
+                updateChart();
+            });
+
+            demandSlider.addEventListener('input', function() {
+                demandShift = parseInt(this.value);
+                const displayValue = demandShift > 0 ? `+${demandShift}%` : demandShift === 0 ? '0%' : `${demandShift}%`;
+                demandValue.textContent = displayValue;
+                updateChart();
+            });
+        }
+
+        function resetSliders() {
+            document.getElementById('supplySlider').value = 0;
+            document.getElementById('demandSlider').value = 0;
+            document.getElementById('supplyValue').textContent = '0%';
+            document.getElementById('demandValue').textContent = '0%';
+            supplyShift = 0;
+            demandShift = 0;
+            updateChart();
+        }
+    </script>
+</body>
+</html>
